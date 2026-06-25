@@ -26,9 +26,13 @@ cfnew/
 │   ├── admin.js           # 管理面板 + REST API（384 行）
 │   ├── subscribe.js       # 订阅生成器（574 行）
 │   └── utils.js           # 工具函数（286 行）
+├── .github/workflows/
+│   ├── obfuscate.yml      # 自动混淆 CI
+│   └── test.yml           # 自动发布 CI
 ├── wrangler.toml          # Workers 部署配置
 ├── package.json           # 构建/部署脚本
-├── _worker.js             # 构建产物（.gitignore）
+├── obfuscate-worker.js    # 混淆脚本
+├── _worker.js             # 混淆产物（.gitignore，由 CI 提交）
 └── DOCUMENTATION.md
 ```
 
@@ -549,7 +553,89 @@ Cloudflare Workers 使用 `cloudflare:sockets` 作为内置模块，esbuild 默�
 ### 依赖
 
 - **生产依赖：** 无（纯 Workers 运行时）
-- **开发依赖：** `wrangler`（部署工具）、`esbuild`（打包）
+- **开发依赖：** `wrangler`（部署工具）、`esbuild`（打包）、`javascript-obfuscator`（混淆）
+
+---
+
+## 代码混淆
+
+部署到生产环境的代码经过混淆处理，保护源码逻辑不被直接读取。
+
+### 构建混淆命令
+
+```bash
+# 完整构建流程：esbuild 打包 → javascript-obfuscator 混淆
+npm run build:obfuscate
+
+# 输出: _worker.js（混淆后）
+```
+
+### 构建流水线
+
+```
+src/index.js
+  ↓ (import 解析)
+esbuild --bundle --format=esm --minify
+  ↓ (单文件)
+_worker.js (43 KB 压缩后)
+  ↓
+javascript-obfuscator
+  ├─ stringArray + base64 编码
+  ├─ mangled-shuffled 标识符
+  ├─ unicodeEscapeSequence 转义
+  ├─ splitStrings 分割字符串
+  └─ compact 压缩
+  ↓
+_worker.js (170+ KB 混淆后) → 部署
+```
+
+### 混淆配置
+
+完整选项定义在 `obfuscate-worker.js` 中，核心策略：
+
+| 选项 | 值 | 效果 |
+|------|-----|------|
+| `stringArray` | `true` | 字符串提取到数组 |
+| `stringArrayEncoding` | `['base64']` | 字符串 base64 编码 |
+| `stringArrayThreshold` | `1.0` | 100% 字符串被编码 |
+| `identifierNamesGenerator` | `mangled-shuffled` | 变量名随机混淆 |
+| `splitStrings` | `true` | 字符串分割成小块 |
+| `unicodeEscapeSequence` | `true` | Unicode 转义 |
+
+### GitHub Actions 自动混淆
+
+推送到 `refactor/simplify-v2` 分支且修改 `src/` 目录下的文件时，自动触发混淆流水线：
+
+1. `npm ci` 安装依赖
+2. `npm run build:obfuscate` 构建并混淆
+3. 自动提交 `_worker.js`（commit message: `部署用这个`）
+4. 推送到仓库
+
+### Pages 部署包发布
+
+打 `v*` 标签时自动创建 GitHub Release：
+
+```bash
+git tag v3.0.1
+git push origin v3.0.1
+```
+
+工作流自动：
+1. 构建 + 混淆
+2. 打包 `_worker.js` + `wrangler.toml` → `Pages.zip`
+3. 创建 GitHub Release 并上传 `Pages.zip`
+
+下载后解压，在 Cloudflare Pages 面板上传即可。
+
+### 混淆文件说明
+
+| 文件 | 作用 |
+|------|------|
+| `src/*.js` | **源代码**（明文），日常开发修改这里 |
+| `_worker.js` | **混淆产物**，由 GitHub Actions 自动生成并提交 |
+| `obfuscate-worker.js` | **混淆脚本**，本地运行 `npm run build:obfuscate` 用 |
+
+> ⚠️ **不要手动修改 `_worker.js`**，它是自动化构建产物。所有改动应在 `src/` 目录中完成。
 
 ---
 

@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "build": "esbuild src/index.js --bundle --outfile=_worker.js --format=esm --minify",
-    "build:dev": "esbuild src/index.js --bundle --outfile=_worker.js --format=esm"
+    "build": "esbuild src/index.js --bundle --outfile=_worker.js --format=esm --minify --external:cloudflare:sockets",
+    "build:dev": "esbuild src/index.js --bundle --outfile=_worker.js --format=esm --external:cloudflare:sockets",
+    "build:obfuscate": "npm run build && node obfuscate-worker.js"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",
+    "javascript-obfuscator": "^5.4.3",
     "wrangler": "^3.0.0"
   }
 }
