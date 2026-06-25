@@ -4,11 +4,12 @@
   "description": "CFnew - Simplified Cloudflare Worker Proxy Service",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "dev": "npm run build:obfuscate && npx wrangler dev",
+    "deploy": "npm run build:obfuscate && npx wrangler deploy",
     "build": "esbuild src/index.js --bundle --outfile=_worker.js --format=esm --minify --external:cloudflare:sockets",
     "build:dev": "esbuild src/index.js --bundle --outfile=_worker.js --format=esm --external:cloudflare:sockets",
-    "build:obfuscate": "npm run build && node obfuscate-worker.js"
+    "build:obfuscate": "npm run build && node obfuscate-worker.js",
+    "deploy:plain": "npx wrangler deploy"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",
