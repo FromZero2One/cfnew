@@ -59,59 +59,79 @@ npx wrangler deploy
 
 ## 部署方式
 
-### 方式一：Workers（推荐）
+### 方式一：Workers
 
-自动打包，一行命令部署。
+两种部署路径：
 
-#### 1. 设置 UUID（必做）
+#### 路径 A：明文部署（快速开发）
+
+适用于开发测试，wrangler 自动打包。
 
 ```bash
+# 设置 UUID
 npx wrangler deploy --var uuid=你的-uuid
-```
 
-或者通过面板设置：Cloudflare Dashboard → Workers & Pages → 你的 Worker → 设置 → 变量 → 添加环境变量 `uuid`。
-
-#### 2. 部署
-
-```bash
-npx wrangler deploy
-```
-
-每次改代码后只需要：
-
-```bash
+# 后续部署
 npx wrangler deploy
 ```
 
 Wrangler 会自动用 esbuild 打包 `src/index.js` 及其所有 import。
 
-#### 3. 本地开发
+#### 路径 B：混淆部署（生产环境 ⭐ 推荐）
+
+适用于生产部署，先构建混淆产物，再部署混淆后的 `_worker.js`。
 
 ```bash
-npm run dev    # 相当于 wrangler dev，本地 http://localhost:8787
+# 1. 构建 + 混淆
+npm run build:obfuscate
+
+# 2. 修改 wrangler.toml，让 main 指向混淆后的产物
+#    main = "_worker.js"
+
+# 3. 部署
+npx wrangler deploy
+
+# 或者用 GitHub Actions 自动完成（推荐）
+# 推送 src/ 到 refactor/simplify-v2 分支即可
+```
+
+#### 本地开发
+
+```bash
+npm run dev    # wrangler dev，本地 http://localhost:8787
 ```
 
 ### 方式二：Pages
 
-适合已有 Pages 项目或需要静态站 + 代理合一。
+适合已有 Pages 项目或 Workers 免费配额不够用的情况。
 
-#### 1. 构建
+#### 1. 构建（必须用混淆构建）
 
 ```bash
-npm run build
-# 生成 _worker.js
+npm run build:obfuscate
+# 生成混淆后的 _worker.js
 ```
 
 #### 2. 上传
 
-**自动部署（推荐）：** 将项目连接到 GitHub → Pages 构建配置：
+**自动部署（推荐）：** 将项目连接到 GitHub，Pages 构建配置：
 ```
-构建命令: npm run build
+构建命令: npm run build:obfuscate
 输出目录: ./
-生产分支: main
+生产分支: refactor/simplify-v2
 ```
 
-**手动上传：**
+**手动上传 Pages.zip（以 GitHub Release 发布）：**
+```bash
+# 打标签自动触发 CI 打包
+git tag v3.0.1
+git push origin v3.0.1
+# CI 会自动构建混淆 → 打包 Pages.zip → 发布到 GitHub Release
+
+# 下载 Pages.zip，在 Cloudflare Pages 面板上传
+```
+
+**手动上传文件：**
 ```bash
 # Cloudflare 面板 → Workers & Pages → 创建 Pages → 上传
 # 选择 _worker.js 和 wrangler.toml
@@ -123,18 +143,20 @@ Pages 不支持 `wrangler.toml` 变量，必须在面板设置：
 ```
 Pages 项目 → 设置 → 环境变量 → 添加
 uuid = 你的-uuid
+# 其他变量同理
 ```
 
-### Pages 与 Workers 对比
+### 部署方式对比
 
-| 维度 | Workers | Pages |
-|------|---------|-------|
-| 部署 | `wrangler deploy` 一键 | 需先 `npm run build` |
-| 免费额度 | 10 万请求/天 | 不限请求数（有限制构建分钟） |
-| 环境变量 | wrangler.toml + 面板 | 仅面板 |
-| KV 绑定 | wrangler.toml 配置 | Pages → 设置 → 函数 → KV 绑定 |
-| 延迟 | 全球 200+ 节点 | 全球 200+ 节点 |
-| 推荐度 | ⭐ 首选 | 备选 |
+| 维度 | Workers（明文） | Workers（混淆 ⭐） | Pages |
+|------|---------------|-------------------|-------|
+| 命令 | `wrangler deploy` | `build:obfuscate` → `wrangler deploy` | `build:obfuscate` → 上传 |
+| 源码保护 | ❌ 明文部署 | ✅ 混淆后部署 | ✅ 混淆后部署 |
+| 免费额度 | 10 万请求/天 | 10 万请求/天 | 不限请求数 |
+| 环境变量 | wrangler.toml + 面板 | wrangler.toml + 面板 | 仅面板 |
+| KV 绑定 | wrangler.toml 配置 | wrangler.toml 配置 | Pages → 设置 → 函数 → KV |
+| CI 自动部署 | ✅ wrangler deploy | ✅ GitHub Actions 混淆+提交 | ✅ GitHub Actions 打包 Release |
+| 推荐场景 | 开发测试 | ⭐ 生产部署 | 备选方案 |
 
 ---
 
@@ -528,13 +550,16 @@ Fallback ProxyIP（就近选择） ────────→ ✅ 数据转发
 # 开发模式（不压缩）
 npm run build:dev
 
-# 生产模式（压缩）
+# 生产模式（esbuild 压缩）
 npm run build
+
+# 生产模式（esbuild 压缩 + javascript-obfuscator 混淆）
+npm run build:obfuscate
 
 # 本地开发服务器
 npm run dev
 
-# 部署
+# 部署（明文，wrangler 自动打包）
 npm run deploy
 ```
 
