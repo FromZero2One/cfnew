@@ -1,1 +1,28 @@
+# ========================================================
+# wrangler.toml — Cloudflare Workers 配置
+# ========================================================
+# 使用方式:
+#   wrangler deploy        → 部署到 Workers (自动打包)
+#   wrangler dev           → 本地开发
+#
+# 环境变量:
+#   uuid          认证 UUID (必填，建议覆盖默认值)
+#   customPath    自定义路径（替代 UUID 路径）
+#   proxyIP       自定义 ProxyIP (p 变量)
+#   socks5        SOCKS5 代理配置
+#   customDNS     自定义 DNS 地址
+#   ech           ECH 功能开关 (yes/no)
+#   alpn          TLS ALPN 配置
+#
+# KV 绑定:
+#   命名空间绑定到 "C"，用于持久化配置存储
+
+name = "cfnew"
+main = "src/index.js"
 compatibility_date = "2026-01-20"
+
+# KV 命名空间绑定（用于持久化配置）
+# 在 Cloudflare 面板创建 KV 后，取消注释并填入 ID:
+# [[kv_namespaces]]
+# binding = "C"
+# id = "your-kv-namespace-id-here"

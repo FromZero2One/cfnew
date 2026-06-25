@@ -1,0 +1,16 @@
+{
+  "name": "cfnew",
+  "version": "3.0.0",
+  "description": "CFnew - Simplified Cloudflare Worker Proxy Service",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "esbuild src/index.js --bundle --outfile=_worker.js --format=esm --minify",
+    "build:dev": "esbuild src/index.js --bundle --outfile=_worker.js --format=esm"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "wrangler": "^3.0.0"
+  }
+}
